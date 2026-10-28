@@ -16,6 +16,8 @@ pub mod credits;
 pub mod dock;
 mod dock_shared;
 pub mod dock_ui;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod embedded;
 pub mod frames;
 pub mod gpu_failure;
 pub mod header;
@@ -27,6 +29,7 @@ pub mod native_menu;
 pub mod panels;
 mod pointer_wrap;
 pub mod prefs_live;
+pub mod softpaint;
 pub mod state;
 pub mod theme;
 pub mod widgets;
@@ -1790,6 +1793,17 @@ impl eframe::App for EffectcraftApp {
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.logic_frame(ctx);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        self.ui_frame(ui, Some(frame));
+    }
+}
+
+impl EffectcraftApp {
+    /// One frame's logic (the desktop app's `eframe::App::logic`; also run by windowless hosts).
+    pub fn logic_frame(&mut self, ctx: &egui::Context) {
         self.apply_gpu_failure(ctx);
         // The CJK fallback fonts depend on the interface language, so they follow a change of
         // Settings ▸ General ▸ Language instead of only the first frame.
@@ -1824,12 +1838,15 @@ impl eframe::App for EffectcraftApp {
         self.collect_screenshots(ctx);
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    /// One frame's UI. `frame` is the window's, absent in a windowless session ([`crate::embedded`]).
+    pub fn ui_frame(&mut self, ui: &mut egui::Ui, frame: Option<&mut eframe::Frame>) {
         if self.gpu_failure_applied == Some(true) {
             self.close_after_device_loss(ui.ctx());
             return;
         }
-        self.init_gpu(frame);
+        if let Some(f) = frame.as_deref() {
+            self.init_gpu(f);
+        }
         if !self.fonts_ready {
             ui.ctx().request_repaint();
             return;
@@ -1837,7 +1854,9 @@ impl eframe::App for EffectcraftApp {
         self.frame(ui);
         let ctx = ui.ctx().clone();
         #[cfg(not(target_arch = "wasm32"))]
-        pointer_wrap::finish_native(&ctx, frame);
+        if let Some(f) = frame {
+            pointer_wrap::finish_native(&ctx, f);
+        }
         // wasm32: no frame threads; render queued frames now, between UI frames.
         if cfg!(target_arch = "wasm32") && self.frames.pump(std::time::Duration::from_millis(if self.playback.playing { 24 } else { 40 })) {
             ctx.request_repaint();

@@ -179,3 +179,13 @@ layout unchanged. Pointer gestures dispatch through this same catalog command.
 EffectCraft also supports `SetStackOpen` and `ResizeStack`. Dynamic panel identities use
 `{"Viewer":42}` or `{"ScriptPanel":77}` in the action. Closing runs the existing viewer
 and ScriptUI lifecycle callbacks; opening uses the existing panel creation commands.
+
+## Embedded session (no window)
+
+`effectcraft-cli embed --control PORT [--size WxH] [--scale S] [--open PROJECT]` runs the whole app
+with no window, for hosts that show EffectCraft inside their own UI (Creative Suite). The UI runs in
+an off-screen egui context (`crates/ui-egui/src/embedded.rs`) drawn by a CPU rasterizer
+(`softpaint.rs`, shared with LightCraft and VectorCraft); compositions render on the CPU. It serves
+this protocol on `127.0.0.1:PORT`: `ui.screenshot` returns its frames, `ui.*` input drives it,
+`engine.execute` runs commands and `app.quit` ends it. Nothing appears on the screen and nothing
+takes focus, on any system; no GPU or display server is needed.
