@@ -250,3 +250,13 @@ window's outer position to its content's, by the main window's title bar, before
 Panels that were closed stay closed and reopen at their default place. The first save writes version 2 and keeps
 the earlier file as `workspaces.old.json`. A damaged, unknown or newer file loads as the default
 layout and is left unchanged.
+
+## Embedded session (no window)
+
+`effectcraft-cli embed --control PORT [--size WxH] [--scale S] [--open PROJECT]` runs the whole app
+with no window, for hosts that show EffectCraft inside their own UI (Creative Suite). The UI runs in
+an off-screen egui context (`crates/ui-egui/src/embedded.rs`) drawn by a CPU rasterizer
+(`softpaint.rs`, shared with LightCraft and VectorCraft); compositions render on the CPU. It serves
+this protocol on `127.0.0.1:PORT`: `ui.screenshot` returns its frames, `ui.*` input drives it,
+`engine.execute` runs commands and `app.quit` ends it. Nothing appears on the screen and nothing
+takes focus, on any system; no GPU or display server is needed.
